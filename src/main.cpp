@@ -4,34 +4,22 @@
 #include <String.h>
 #include <StreamString.h>
 #include <WString.h>
-#include "esp32_lora.h"
-#include "esp32_connect.h"
+#include "lib\include\esp32_lora.h"
 
 void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200);
-  initLoRa();                                  //
-  initWifi();                                  // Initialize WiFi
-  connectToWifi("your_ssid", "your_password"); // Connect to WiFi
-  Serial.println("LoRa and WiFi initialized");
+  initLoRa();
+  //                                  // Initialize WiFi
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  sendLoRaMessage("Hello, LoRa!");
-  String receivedMessage;
-  String result = receiveLoRaMessage(receivedMessage);
-  if (result != "No message received")
-  {
-    Serial.println("Received: " + receivedMessage);
-  }
-  else
-  {
-    Serial.println("No new messages.");
-  }
-  delay(1000);
+  Serial.printf("Pingas");
+  sendLoRaMessage("Hello World");
+  sys_delay_ms(500);
 }
 
 // put function definitions here:

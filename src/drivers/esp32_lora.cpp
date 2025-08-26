@@ -3,7 +3,6 @@
 #include <String.h>
 #include <StreamString.h>
 #include <WString.h>
-#include "esp32_lora.h"
 
 // Adjust pin numbers
 #define LORA_SS 5
@@ -26,6 +25,7 @@ void initLoRa()
 
 void sendLoRaMessage(String message)
 {
+  // Append a created LoRa packet with message and send it off
   LoRa.beginPacket();
   LoRa.print(message);
   LoRa.endPacket();
