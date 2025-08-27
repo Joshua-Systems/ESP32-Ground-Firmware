@@ -5,16 +5,15 @@
 #include <WString.h>
 
 // Adjust pin numbers
-#define LORA_SS 5
-#define LORA_RST 14
-#define LORA_DIO0 26
+#define LORA_SS 7
+#define LORA_RST 0
+#define LORA_DIO0 1
 #define LORA_FREQ 915E6 // For 915 MHz modules
 
 // These above parameters will need tweaking
 
 void initLoRa()
 {
-  // TODO: Set LoRa pins and call LoRa.begin()
   // Start SPI communication with LoRa
   LoRa.setPins(LORA_SS, LORA_RST, LORA_DIO0);
   if (!LoRa.begin(LORA_FREQ))
@@ -25,10 +24,13 @@ void initLoRa()
 
 void sendLoRaMessage(String message)
 {
-  // Append a created LoRa packet with message and send it off
+  // Append a created LoRa packet with message and send it off via SPI
   LoRa.beginPacket();
   LoRa.print(message);
   LoRa.endPacket();
+  // endPacket() activates SPI, may need to check SPI pinout
+  Serial.println(message);
+  Serial.println("HARDWARE TEST POINT SEND LORA");
 
   // Optionally, you can print a confirmation
   printf("Sent message: %s\n", message.c_str());

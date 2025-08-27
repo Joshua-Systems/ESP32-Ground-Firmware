@@ -8,18 +8,19 @@
 
 void setup()
 {
+  pinMode(10, OUTPUT);
   // put your setup code here, to run once:
   Serial.begin(115200);
-  initLoRa();
-  //                                  // Initialize WiFi
+  initLoRa(); // This Hangs the output
+  //                                   // Initialize WiFi
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly:
-  Serial.printf("Pingas");
-  sendLoRaMessage("Hello World");
-  sys_delay_ms(500);
+
+  Serial.println("Balls");
+  delay(500);
 }
 
 // put function definitions here:
