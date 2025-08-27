@@ -33,7 +33,7 @@ void sendLoRaMessage(String message)
   Serial.println("HARDWARE TEST POINT SEND LORA");
 
   // Optionally, you can print a confirmation
-  printf("Sent message: %s\n", message.c_str());
+  Serial.printf("Sent message: %s\n", message.c_str());
 }
 
 String receiveLoRaMessage(String &message)

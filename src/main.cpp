@@ -17,9 +17,8 @@ void setup()
 
 void loop()
 {
-  // put your main code here, to run repeatedly:
-
-  Serial.println("Balls");
+  // put your main code here, to run repeatedly
+  sendLoRaMessage("LoRa Test Message");
   delay(500);
 }
 
