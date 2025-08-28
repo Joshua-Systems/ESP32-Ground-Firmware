@@ -6,6 +6,7 @@
 #include <StreamString.h>
 #include <WString.h>
 #include "lib\include\esp32_lora.h"
+#include "lib\include\SPI_Drive.h"
 
 int testPoint = 0;
 String Message;
@@ -28,20 +29,15 @@ void loop()
   sendLoRaMessage("TEST");
   digitalWrite(10, LOW);
   testPoint++;
-  Serial.println(testPoint);*/
+  Serial.println(testPoint);
 
   sys_delay_ms(5000);
   Message = "";
   Flag = receiveLoRaMessage(Message);
-  Serial.println("Flag =" + Flag);
+  Serial.println("Flag =" + Flag);*/
 
-  // TEST SPI TRANSFER
-  uint8_t spInt = singleTransfer(0, 0x11);
-  Serial.println("");
-  Serial.println("Sent: " + spInt);
-  testPoint++;
-  Serial.println(testPoint);
-  sys_delay_ms(5000);
+  SPISendLoopBackTest();
+  sys_delay_ms(1000);
 }
 
 // put function definitions here:

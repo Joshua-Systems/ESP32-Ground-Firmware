@@ -42,10 +42,10 @@ void SPISendLoopBackTest()
 
   if (dataToSend == recievedData)
   {
-    Serial.println("Success!");
+    Serial.println("LoopBack Success!");
   }
   else
   {
-    Serial.println("Failure");
+    Serial.println("LoopBack Failure");
   }
 }
