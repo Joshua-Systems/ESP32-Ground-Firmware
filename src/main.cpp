@@ -1,10 +1,15 @@
 #include <Arduino.h>
+#include <queue>
 #include <LoRa.h>
 #include <SPI.h>
 #include <String.h>
 #include <StreamString.h>
 #include <WString.h>
 #include "lib\include\esp32_lora.h"
+
+int testPoint = 0;
+String Message;
+String Flag;
 
 void setup()
 {
@@ -18,8 +23,25 @@ void setup()
 void loop()
 {
   // put your main code here, to run repeatedly
-  sendLoRaMessage("LoRa Test Message");
-  delay(500);
+  /*digitalWrite(10, HIGH);
+  sys_delay_ms(1000);
+  sendLoRaMessage("TEST");
+  digitalWrite(10, LOW);
+  testPoint++;
+  Serial.println(testPoint);*/
+
+  sys_delay_ms(5000);
+  Message = "";
+  Flag = receiveLoRaMessage(Message);
+  Serial.println("Flag =" + Flag);
+
+  // TEST SPI TRANSFER
+  uint8_t spInt = singleTransfer(0, 0x11);
+  Serial.println("");
+  Serial.println("Sent: " + spInt);
+  testPoint++;
+  Serial.println(testPoint);
+  sys_delay_ms(5000);
 }
 
 // put function definitions here:

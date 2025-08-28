@@ -5,12 +5,16 @@
 #include <WString.h>
 
 // Adjust pin numbers
+// These are for the ESP32 C3 DEVKIT
 #define LORA_SS 7
 #define LORA_RST 0
 #define LORA_DIO0 1
 #define LORA_FREQ 915E6 // For 915 MHz modules
+#define LORA_SPI_CLK 8E6
+#define MSB_FIRST 1
+#define SPIMODE 0
 
-// These above parameters will need tweaking
+int beganpacket;
 
 void initLoRa()
 {
@@ -20,20 +24,24 @@ void initLoRa()
   {
     printf("LoRa initialization failed!");
   }
+  LoRa.begin(LORA_FREQ);
 }
 
 void sendLoRaMessage(String message)
 {
   // Append a created LoRa packet with message and send it off via SPI
-  LoRa.beginPacket();
-  LoRa.print(message);
-  LoRa.endPacket();
-  // endPacket() activates SPI, may need to check SPI pinout
-  Serial.println(message);
-  Serial.println("HARDWARE TEST POINT SEND LORA");
 
-  // Optionally, you can print a confirmation
-  Serial.printf("Sent message: %s\n", message.c_str());
+  beganpacket = LoRa.beginPacket(true);
+  if (beganpacket)
+  {
+    LoRa.print(message);
+    LoRa.endPacket();
+    // endPacket() activates SPI, may need to check SPI pinout
+    Serial.println(message);
+    Serial.println("HARDWARE TEST POINT SEND LORA");
+    // Optionally, you can print a confirmation
+    Serial.printf("Sent message: %s\n", message.c_str());
+  }
 }
 
 String receiveLoRaMessage(String &message)
