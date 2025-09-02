@@ -2,5 +2,6 @@
 #include <WString.h>
 #include <SPI.h>
 
-void SPIinit();
-void SPISendLoopBackTest();
+void initSPI();
+void transferTest();
+void loopback();

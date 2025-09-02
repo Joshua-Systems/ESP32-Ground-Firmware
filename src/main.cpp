@@ -14,30 +14,32 @@ String Flag;
 
 void setup()
 {
-  pinMode(10, OUTPUT);
   // put your setup code here, to run once:
-  Serial.begin(115200);
-  initLoRa(); // This Hangs the output
-  //                                   // Initialize WiFi
+  Serial.begin(115200, SERIAL_8N1);
+  pinMode(0, OUTPUT);
+  digitalWrite(0, HIGH);
+  initSPI();
+  //                                    // Initialize WiFi
 }
 
 void loop()
 {
   // put your main code here, to run repeatedly
-  /*digitalWrite(10, HIGH);
-  sys_delay_ms(1000);
+  /*sys_delay_ms(1000);
   sendLoRaMessage("TEST");
   digitalWrite(10, LOW);
   testPoint++;
   Serial.println(testPoint);
 
-  sys_delay_ms(5000);
   Message = "";
   Flag = receiveLoRaMessage(Message);
   Serial.println("Flag =" + Flag);*/
 
-  SPISendLoopBackTest();
+  digitalWrite(0, LOW);
   sys_delay_ms(1000);
+  digitalWrite(0, HIGH);
+  sys_delay_ms(1000);
+  loopback();
 }
 
 // put function definitions here:

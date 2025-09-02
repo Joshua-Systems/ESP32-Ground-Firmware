@@ -6,8 +6,8 @@
 
 // Adjust pin numbers
 // These are for the ESP32 C3 DEVKIT
-#define LORA_SS 7
-#define LORA_RST 0
+#define LORA_SS 10
+#define LORA_RST 9
 #define LORA_DIO0 1
 #define LORA_FREQ 915E6 // For 915 MHz modules
 #define LORA_SPI_CLK 8E6
