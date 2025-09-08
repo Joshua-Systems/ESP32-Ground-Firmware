@@ -30,6 +30,7 @@ void transferTest()
 
 void loopback()
 {
+  // This is a reference test simply for the purposes of checking SPI communication
   esp_err_t ret;
 
   spi_device_handle_t handle;
