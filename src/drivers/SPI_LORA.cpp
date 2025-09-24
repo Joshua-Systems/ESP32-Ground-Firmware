@@ -2,11 +2,13 @@
 
 void setUpSPI()
 {
-  esp_err_t ret;
+  extern esp_err_t ret;
 
-  spi_device_handle_t handle;
+  extern spi_device_handle_t handle;
 
-  spi_bus_config_t buscfg = {
+  extern spi_bus_config_t buscfg;
+
+  buscfg = {
       .mosi_io_num = PIN_MOSI,
       .miso_io_num = PIN_MISO,
       .sclk_io_num = PIN_SCLK,
