@@ -14,7 +14,12 @@ void setup()
   // put your setup code here, to run once:
   Serial.begin(115200, SERIAL_8N1);
   setUpSPI();
+  ConfDIO();
+  Serial.printf(" Value: 0x%02X \n", ReadDIO());
   readFactoryRegisters();
+  Serial.printf(" Value: 0x%02X \n", ReadDIO());
+  TestLoraEspCommSPI();
+  Serial.printf(" Value: 0x%02X \n", ReadDIO());
 
   //
 }
@@ -32,6 +37,8 @@ void loop()
   Flag = receiveLoRaMessage(Message);
   Serial.println("Flag =" + Flag);*/
   // Rx();
+
+  Serial.printf(" Value: 0x%02X \n", ReadDIO());
 }
 
 // put function definitions here:

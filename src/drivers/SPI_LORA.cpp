@@ -1,4 +1,5 @@
 #include "lib/include/SPI_LORA.h"
+#include "driver/gpio.h"
 
 spi_bus_config_t buscfg = {0};
 esp_err_t ret = ESP_OK;
@@ -42,15 +43,15 @@ uint8_t SPITransfer(uint8_t addr, uint8_t data, uint8_t rw)
 
   if (rw)
   {
-    // READ: MSB = 1, send dummy byte to receive data
+    // WRITE: MSB = 1, send dummy byte to receive data
     datatosend[0] = addr | 0x80;
-    datatosend[1] = 0x00;
+    datatosend[1] = data;
   }
   else
   {
     // WRITE: MSB = 0
     datatosend[0] = addr & 0x7F;
-    datatosend[1] = data;
+    datatosend[1] = 0x00;
   }
 
   trans.length = sizeof(datatosend) * 8;
@@ -60,24 +61,24 @@ uint8_t SPITransfer(uint8_t addr, uint8_t data, uint8_t rw)
   ret = spi_device_transmit(handle, &trans);
   ESP_ERROR_CHECK(ret);
 
-  if (rw)
+  if (rw == 1)
   {
-    return received[1]; // register value
+    return 0;
   }
   else
   {
-    return 0; // nothing useful to return on write
+    return received[1];
   }
 }
 
 void TestLoraEspCommSPI()
 {
-  uint8_t writeVal = 0x0F;                 // any safe value
-  SPITransfer(RegOpMode, writeVal, false); // write to register
+  uint8_t writeVal = 0xFF;                   // any safe value
+  writeVal = SPITransfer(0x42, writeVal, 1); // write to register
 
+  uint8_t readVal = SPITransfer(0x42, 0x00, 0);
   delay(10); // small delay to ensure SPI transaction completes
 
-  uint8_t readVal = SPITransfer(RegOpMode, 0x00, true); // read back
   Serial.printf("Written: 0x%02X, Read back: 0x%02X\n", writeVal, readVal);
 
   if (writeVal == readVal)
@@ -92,7 +93,9 @@ void TestLoraEspCommSPI()
 
 void readFactoryRegisters()
 {
-  uint8_t version = SPITransfer(0x4B, 0x00, true); // RegVersion
+  uint8_t version = SPITransfer(0x42, 0x00, true); // RegVersion
+  Serial.printf("LoRa Version register: 0x%02X\n", version);
+  version = SPITransfer(0x18, 0x00, true); // RegVersion
   Serial.printf("LoRa Version register: 0x%02X\n", version);
 }
 
@@ -167,4 +170,44 @@ uint8_t Rx()
 
   // Return packet length
   return packetLen;
+}
+
+void ConfDIO()
+// TODO: Have this function become modular by allowing it to
+// Either input or output a value dependent on DIO
+// Probably should put this in its own Header
+{
+  gpio_config_t io_conf = {
+      .pin_bit_mask = (1ULL << DIO0) |
+                      (1ULL << DIO1) |
+                      (1ULL << DIO2) |
+                      (1ULL << DIO3) |
+                      (1ULL << DIO4) |
+                      (1ULL << DIO5), // which pins
+      .mode = GPIO_MODE_INPUT,        // output mode
+      .pull_up_en = GPIO_PULLUP_DISABLE,
+      .pull_down_en = GPIO_PULLDOWN_DISABLE,
+      .intr_type = GPIO_INTR_DISABLE, // no interrupts
+  };
+  gpio_config(&io_conf);
+}
+
+uint8_t ReadDIO()
+{
+  uint8_t i = 0;
+  uint8_t level[6];
+  uint8_t sum;
+  level[0] = gpio_get_level((gpio_num_t)DIO0);
+  level[1] = gpio_get_level((gpio_num_t)DIO1);
+  level[2] = gpio_get_level((gpio_num_t)DIO2);
+  level[3] = gpio_get_level((gpio_num_t)DIO3);
+  level[4] = gpio_get_level((gpio_num_t)DIO4);
+  level[5] = gpio_get_level((gpio_num_t)DIO5);
+
+  for (i = 0; i < 6; i++)
+  {
+    sum |= (level[i] << i);
+  }
+
+  return (uint8_t)sum;
 }

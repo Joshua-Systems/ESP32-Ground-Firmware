@@ -13,6 +13,13 @@
 #define PIN_SCLK 9
 #define PIN_CS 8 // Chip Select (any free GPIO)
 
+#define DIO3 10
+#define DIO4 2
+#define DIO0 3
+#define DIO1 0
+#define DIO2 1
+#define DIO5 6
+
 extern spi_bus_config_t buscfg;
 extern esp_err_t ret;
 extern spi_device_handle_t handle;
@@ -85,4 +92,8 @@ void TestLoraEspCommSPI();
 
 void readFactoryRegisters();
 
+void ConfDIO();
+
 uint8_t Rx();
+
+uint8_t ReadDIO();
