@@ -29,15 +29,28 @@
 #define RegFifoAddrPtr 0x0D
 
 // Set LongRangeMode bit of RegOpMode
-#define RXSingle 0x6
-#define RXcontinuous 0x5
+#define RXSingle 0x06
+#define RXcontinuous 0x05
+#define LoRaMode 0x01
+
+// RegDIOMapping
+#define REGMAP1 0x40 // used to configure the DIO pins for various flags
+#define REGMAP2 0x41 // pins DIO-3
+
+// Interrupt Address Regs
+#define RegIrqFlag 0x12
 
 // single reception mode
 #define FifoRxPtrBaseRST 0x00
 #define FifoRxBaseAddr 0x0F
-#define RxSingle
+#define RxSingle 0b110
 #define ValidHeaderInterrupt
-#define PayloadCRCError
+// Defined Rx for FSK and LoRa
+#define PayloadCRCError 0b10
+#define RxDone 0b00
+#define LRxDone 6
+#define LPayloadCRCError 5
+
 // Reset SPI pointer to base
 
 // Rx Procedure
@@ -49,7 +62,13 @@
   Payload can be extracted from the FIFO by reading the RegFifo FifoNbRxBytes times
 */
 
+extern spi_device_handle_t handle;
+extern spi_bus_config_t buscfg;
+extern esp_err_t ret;
+
 void setUpSPI();                         // initialise the SPI bus and add the LoRa Hope RF as a device
 uint8_t singleTransfer(uint8_t Address); // new SPI transfer class
+
+void SPITransfer(uint8_t data);
 
 void configureSingleReception();
