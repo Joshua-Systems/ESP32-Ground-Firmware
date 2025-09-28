@@ -53,11 +53,15 @@ extern spi_device_handle_t handle;
 // Interrupt Address Regs
 #define RegIrqFlag 0x12
 
+// Mode Configuration Reg (Pkt -> Cont)
+#define RegPacketConf 0x31
+
 // single reception mode
 #define FifoRxPtrBaseRST 0x00
 #define FifoRxBaseAddr 0x0F
 #define RxSingle 0b110
 #define ValidHeaderInterrupt
+
 // Defined Rx for FSK and LoRa
 #define PayloadCRCError 0b10
 #define RxDone 0b00
@@ -94,6 +98,10 @@ void readFactoryRegisters();
 
 void ConfDIO();
 
+void fuckingWithDIO();
+
 uint8_t Rx();
 
 uint8_t ReadDIO();
+
+uint8_t readFromReg(uint8_t RegAddr);

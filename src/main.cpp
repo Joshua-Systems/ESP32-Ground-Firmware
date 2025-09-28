@@ -20,6 +20,7 @@ void setup()
   Serial.printf(" Value: 0x%02X \n", ReadDIO());
   TestLoraEspCommSPI();
   Serial.printf(" Value: 0x%02X \n", ReadDIO());
+  fuckingWithDIO();
 
   //
 }
@@ -38,7 +39,8 @@ void loop()
   Serial.println("Flag =" + Flag);*/
   // Rx();
 
-  Serial.printf(" Value: 0x%02X \n", ReadDIO());
+  Serial.printf("Dio Value: 0x%02X \n", ReadDIO());
+  Serial.printf("Reg Value: 0x%02X \n", readFromReg(RegOpMode));
 }
 
 // put function definitions here:

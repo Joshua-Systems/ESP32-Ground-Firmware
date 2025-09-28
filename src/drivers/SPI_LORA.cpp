@@ -93,9 +93,9 @@ void TestLoraEspCommSPI()
 
 void readFactoryRegisters()
 {
-  uint8_t version = SPITransfer(0x42, 0x00, true); // RegVersion
+  uint8_t version = SPITransfer(0x42, 0x00, 0); // RegVersion
   Serial.printf("LoRa Version register: 0x%02X\n", version);
-  version = SPITransfer(0x18, 0x00, true); // RegVersion
+  version = SPITransfer(0x18, 0x00, 0); // RegVersion
   Serial.printf("LoRa Version register: 0x%02X\n", version);
 }
 
@@ -132,7 +132,7 @@ uint8_t Rx()
   int timeout = 1000;
   do
   {
-    irqFlags = SPITransfer(RegIrqFlag, 0x00, 1); // read register
+    irqFlags = SPITransfer(RegIrqFlag, 0x00, 0);
     delay(1);
     Serial.printf("Irq SPI Result: %d\n", irqFlags);
     timeout--;
@@ -210,4 +210,17 @@ uint8_t ReadDIO()
   }
 
   return (uint8_t)sum;
+}
+
+void messingWithDIO()
+{
+  uint8_t Reg = SPITransfer(RegDioMapping2, 0b00000000, 1);
+  Reg = SPITransfer(RegDioMapping1, 0b00010000, 1);
+  Reg = SPITransfer(RegPacketConf, (1 << 6), 1);
+  Reg = SPITransfer(RegOpMode, 0b00000101, 1);
+}
+
+uint8_t readFromReg(uint8_t RegAddr)
+{
+  return SPITransfer(RegAddr, 0x00, 0);
 }
