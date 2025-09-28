@@ -11,7 +11,13 @@
 #define PIN_MISO 4
 #define PIN_MOSI 7
 #define PIN_SCLK 9
-#define PIN_CS 11 // Chip Select (any free GPIO)
+#define PIN_CS 8 // Chip Select (any free GPIO)
+
+extern spi_bus_config_t buscfg;
+extern esp_err_t ret;
+extern spi_device_handle_t handle;
+
+#define DIO
 
 // Registers addresses
 /*The register address will be a 7bit adress with a 0 at the front of it for read access, the
@@ -51,6 +57,8 @@
 #define LRxDone 6
 #define LPayloadCRCError 5
 
+#define RegPreambleDetect 0x1F
+
 // Reset SPI pointer to base
 
 // Rx Procedure
@@ -72,3 +80,9 @@ uint8_t singleTransfer(uint8_t Address); // new SPI transfer class
 void SPITransfer(uint8_t data);
 
 void configureSingleReception();
+
+void TestLoraEspCommSPI();
+
+void readFactoryRegisters();
+
+uint8_t Rx();

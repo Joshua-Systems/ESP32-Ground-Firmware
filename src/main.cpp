@@ -1,12 +1,9 @@
 #include <Arduino.h>
-#include <queue>
-#include <LoRa.h>
-#include <SPI.h>
 #include <String.h>
 #include <StreamString.h>
 #include <WString.h>
-#include "lib\include\esp32_lora.h"
-#include "lib\include\SPI_Drive.h"
+#include "lib/include/SPI_LORA.h"
+#include "lib/include/SPI_TEST.h"
 
 int testPoint = 0;
 String Message;
@@ -16,10 +13,10 @@ void setup()
 {
   // put your setup code here, to run once:
   Serial.begin(115200, SERIAL_8N1);
-  pinMode(0, OUTPUT);
-  digitalWrite(0, HIGH);
-  initSPI();
-  //                                    // Initialize WiFi
+  setUpSPI();
+  readFactoryRegisters();
+
+  //
 }
 
 void loop()
@@ -34,12 +31,7 @@ void loop()
   Message = "";
   Flag = receiveLoRaMessage(Message);
   Serial.println("Flag =" + Flag);*/
-
-  digitalWrite(0, LOW);
-  sys_delay_ms(1000);
-  digitalWrite(0, HIGH);
-  sys_delay_ms(1000);
-  loopback();
+  // Rx();
 }
 
 // put function definitions here:

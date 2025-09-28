@@ -62,7 +62,7 @@ void loopback()
   while (1)
   {
     Serial.println("Initialising Data to Send");
-    uint8_t dataToSend[4] = {0xDE, 0xAD, 0xBE, 0xEF};
+    uint8_t dataToSend[4] = {0xFF, 0xFF, 0xFF, 0xFF};
     uint8_t recieved[4] = {0};
 
     spi_transaction_t transfer;

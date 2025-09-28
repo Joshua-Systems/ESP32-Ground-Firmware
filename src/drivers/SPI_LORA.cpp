@@ -1,28 +1,27 @@
 #include "lib/include/SPI_LORA.h"
 
+spi_bus_config_t buscfg = {0};
+esp_err_t ret = ESP_OK;
+spi_device_handle_t handle = nullptr;
+
 void setUpSPI()
 {
-  extern esp_err_t ret;
 
-  extern spi_device_handle_t handle;
+  // Initialize all fields of buscfg individually
 
-  extern spi_bus_config_t buscfg;
+  buscfg.mosi_io_num = PIN_MOSI;
+  buscfg.miso_io_num = PIN_MISO;
+  buscfg.sclk_io_num = PIN_SCLK;
+  buscfg.quadwp_io_num = -1;
+  buscfg.quadhd_io_num = -1;
 
-  buscfg = {
-      .mosi_io_num = PIN_MOSI,
-      .miso_io_num = PIN_MISO,
-      .sclk_io_num = PIN_SCLK,
-      .quadwp_io_num = -1,
-      .quadhd_io_num = -1,
-      .max_transfer_sz = 32,
-  };
   Serial.println("Initializing SPI bus...");
 
   ret = spi_bus_initialize(LORA_HOST, &buscfg, SPI_DMA_CH_AUTO);
   ESP_ERROR_CHECK(ret);
 
   spi_device_interface_config_t devcfg = {
-      .mode = 2,                 // SPI mode 0
+      .mode = 0,                 // SPI mode 0
       .clock_speed_hz = 1000000, // 1 MHz clock speed
       .spics_io_num = PIN_CS,
       .queue_size = 7,
@@ -71,8 +70,30 @@ uint8_t SPITransfer(uint8_t addr, uint8_t data, uint8_t rw)
   }
 }
 
-void initLoRa()
+void TestLoraEspCommSPI()
 {
+  uint8_t writeVal = 0x0F;                 // any safe value
+  SPITransfer(RegOpMode, writeVal, false); // write to register
+
+  delay(10); // small delay to ensure SPI transaction completes
+
+  uint8_t readVal = SPITransfer(RegOpMode, 0x00, true); // read back
+  Serial.printf("Written: 0x%02X, Read back: 0x%02X\n", writeVal, readVal);
+
+  if (writeVal == readVal)
+  {
+    Serial.println("SPI write/read SUCCESS!");
+  }
+  else
+  {
+    Serial.println("SPI write/read FAILED!");
+  }
+}
+
+void readFactoryRegisters()
+{
+  uint8_t version = SPITransfer(0x4B, 0x00, true); // RegVersion
+  Serial.printf("LoRa Version register: 0x%02X\n", version);
 }
 
 void configureSingleReception()
@@ -84,23 +105,39 @@ void configureSingleReception()
   uint8_t Base = FifoRxBaseAddr;
 
   // Set RegFifoPtrToBase
-  SPITransfer(RegFifoAddrPtr, Base, 0);
+  uint8_t res = SPITransfer(RegFifoAddrPtr, Base, 0);
+  Serial.printf("Regfifo SPI Result: %d\n", res);
 
   // Configure the appropriate Dio pins
   uint8_t DIOCFG = (RxDone << 7) | (PayloadCRCError);
-  SPITransfer(REGMAP1, DIOCFG, 0);
+  Serial.printf("DIOCFG: %d\n", DIOCFG);
+  res = SPITransfer(REGMAP1, DIOCFG, 0);
+  Serial.printf("DIOCFG SPI Result: %d\n", res);
 
   // Bit shift to set LoRa and set_Mode_Single
   Regi = (LoRa << 7) | (RxSing);
-  SPITransfer(RegOpMode, Regi, 0);
+  res = SPITransfer(RegOpMode, Regi, 0);
+  Serial.printf("RegOpMode SPI Result: %d\n", res);
+
+  res = SPITransfer(0x12, 0x00, 1);
+  Serial.printf("RegOpMode SPI Result: %d\n", res);
 }
 
 uint8_t Rx()
 {
   uint8_t irqFlags;
+  int timeout = 1000;
   do
   {
     irqFlags = SPITransfer(RegIrqFlag, 0x00, 1); // read register
+    delay(1);
+    Serial.printf("Irq SPI Result: %d\n", irqFlags);
+    timeout--;
+    if (timeout <= 0)
+    {
+      Serial.printf("RX Timeout");
+      return 0;
+    }
   } while ((irqFlags & (1 << LRxDone)) == 0); // wait for RxDone bit
 
   if (irqFlags & (1 << LPayloadCRCError))
@@ -112,9 +149,22 @@ uint8_t Rx()
   // Clear IRQ flags
   SPITransfer(RegIrqFlag, 0xFF, 0);
 
-  // Read FIFO
-  uint8_t len = SPITransfer(RegFifo, 0x00, 1);
-  Serial.printf("Packet length = %d\n", len);
+  uint8_t packetLen = SPITransfer(RegNbRxBytes, 0x00, true);
 
-  return len; // placeholder, later you can fetch the payload from FIFO
+  // Set Base Pointer
+  SPITransfer(RegFifoAddrPtr, SPITransfer(RegFifoAddrPtr, 0x00, true), false);
+
+  // Read payload from FIFO
+  int i;
+  uint8_t buffer[i];
+  for (uint8_t i = 0; i < packetLen; i++)
+  {
+    buffer[i] = SPITransfer(RegFifo, 0x00, true);
+  }
+
+  // Clear IRQ flags
+  SPITransfer(RegIrqFlag, 0xFF, false);
+
+  // Return packet length
+  return packetLen;
 }
