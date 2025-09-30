@@ -15,32 +15,22 @@ void setup()
   Serial.begin(115200, SERIAL_8N1);
   setUpSPI();
   ConfDIO();
-  Serial.printf(" Value: 0x%02X \n", ReadDIO());
-  readFactoryRegisters();
-  Serial.printf(" Value: 0x%02X \n", ReadDIO());
-  TestLoraEspCommSPI();
-  Serial.printf(" Value: 0x%02X \n", ReadDIO());
   fuckingWithDIO();
+  LoRaConfig();
+
+  // Clear IRQ flags
+
+  Serial.println("LoRa SPI initialized and configured.");
+  Serial.printf("Status: 0x%02X", readFromReg(RegOpMode));
 
   //
 }
 
 void loop()
 {
-  // put your main code here, to run repeatedly
-  /*sys_delay_ms(1000);
-  sendLoRaMessage("TEST");
-  digitalWrite(10, LOW);
-  testPoint++;
-  Serial.println(testPoint);
-
-  Message = "";
-  Flag = receiveLoRaMessage(Message);
-  Serial.println("Flag =" + Flag);*/
-  // Rx();
-
-  Serial.printf("Dio Value: 0x%02X \n", ReadDIO());
-  Serial.printf("Reg Value: 0x%02X \n", readFromReg(RegOpMode));
+  const char *msg = "Hello LoRa";
+  TxConf((const uint8_t *)msg, strlen(msg));
+  Serial.println("Escaped");
 }
 
 // put function definitions here:

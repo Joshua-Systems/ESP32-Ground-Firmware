@@ -99,6 +99,39 @@ void readFactoryRegisters()
   Serial.printf("LoRa Version register: 0x%02X\n", version);
 }
 
+void LoRaConfig()
+{
+
+  const uint8_t MODE_SLEEP = 0x00;
+  const uint8_t MODE_STDBY = 0x01;
+  const uint8_t LONGRANGEMODE = 1 << 7;
+
+  // Send Reg to sleep
+  SPITransfer(RegOpMode, 0x00, 1);
+  delay(10);
+  SPITransfer(RegOpMode, 0x80, 1);
+  delay(5);
+  SPITransfer(RegOpMode, 0x01, 1);
+  SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1); // 0x0E
+  SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
+
+  uint32_t frf = (uint32_t)(915e6 / (32e6 / 524288.0)); // 32 MHz / 2^19
+  SPITransfer(RegFrMsb, (frf >> 16) & 0xFF, 1);
+  SPITransfer(RegFrMid, (frf >> 8) & 0xFF, 1);
+  SPITransfer(RegFrLsb, (frf >> 0) & 0xFF, 1);
+
+  // Config Payload Length
+  // Configure LoRa Modem
+  SPITransfer(RegModemConfig1, LoRaConF1, 1);
+
+  // Configure PA to high Power Mode,
+  SPITransfer(RegPaConfig, 0x8F, 1);
+
+  // Configure Preamble length
+  SPITransfer(RegPreambleMsb, (8 >> 8) & 0xFF, 1);
+  SPITransfer(RegPreambleLsb, 8 & 0xFF, 1);
+}
+
 void configureSingleReception()
 {
 
@@ -132,7 +165,7 @@ uint8_t Rx()
   int timeout = 1000;
   do
   {
-    irqFlags = SPITransfer(RegIrqFlag, 0x00, 0);
+    irqFlags = SPITransfer(RegIrqReg, 0x00, 0);
     delay(1);
     Serial.printf("Irq SPI Result: %d\n", irqFlags);
     timeout--;
@@ -150,7 +183,7 @@ uint8_t Rx()
   }
 
   // Clear IRQ flags
-  SPITransfer(RegIrqFlag, 0xFF, 0);
+  SPITransfer(RegIrqReg, 0xFF, 1);
 
   uint8_t packetLen = SPITransfer(RegNbRxBytes, 0x00, true);
 
@@ -162,14 +195,61 @@ uint8_t Rx()
   uint8_t buffer[i];
   for (uint8_t i = 0; i < packetLen; i++)
   {
-    buffer[i] = SPITransfer(RegFifo, 0x00, true);
+    buffer[i] = SPITransfer(RegFifo, 0x00, 0);
   }
 
   // Clear IRQ flags
-  SPITransfer(RegIrqFlag, 0xFF, false);
+  SPITransfer(RegIrqReg, 0xFF, false);
 
   // Return packet length
   return packetLen;
+}
+
+void TxConf(const uint8_t *payload, uint8_t len)
+{
+  const uint8_t MODE_TX = 0x03;
+  const uint8_t LONGRANGEMODE = 1 << 7;
+
+  // Ensure in standby
+  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
+
+  // Set FIFO pointers to TxBase
+  SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1);
+
+  // Set payload length BEFORE writing data (Ideally Implicit header mode)
+  SPITransfer(RegPayloadLength, len, 1);
+
+  // Write payload bytes to FIFO
+  for (uint8_t i = 0; i < len; ++i)
+  {
+    SPITransfer(RegFifo, payload[i], 1);
+  }
+
+  // Clear IRQs and unmask TX Done if desired
+  SPITransfer(RegIrqReg, 0xFF, 1); // clear
+  Serial.printf("The Register After initiating FSTX is: 0x %02X \n", SPITransfer(RegOpMode, 0x00, 0));
+  // Start TX:
+  SPITransfer(RegOpMode, 0x82, 1);
+  SPITransfer(RegOpMode, 0x83, 1);
+
+  Serial.printf("The Register After initiating TX is: 0x%02X \n", SPITransfer(RegOpMode, 0x00, 0));
+
+  SPITransfer(RegDioMapping1, 0x40, 1);
+
+  uint32_t start = millis();
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << TXdoneMask)))
+  {
+    if (millis() - start > 5000)
+    { // 5 sec timeout
+      Serial.println("TX Timeout!");
+      return;
+    }
+    delay(1);
+  }
+
+  // Clear TX Done flag
+  SPITransfer(RegIrqReg, (1 << TXdoneMask), 1);
+  Serial.println("TX complete!");
 }
 
 void ConfDIO()
@@ -212,15 +292,42 @@ uint8_t ReadDIO()
   return (uint8_t)sum;
 }
 
-void messingWithDIO()
+void fuckingWithDIO()
 {
-  uint8_t Reg = SPITransfer(RegDioMapping2, 0b00000000, 1);
-  Reg = SPITransfer(RegDioMapping1, 0b00010000, 1);
-  Reg = SPITransfer(RegPacketConf, (1 << 6), 1);
-  Reg = SPITransfer(RegOpMode, 0b00000101, 1);
+  uint8_t Bitmask = SPITransfer(RegOpMode, 0x00, 0);
+  // Go from Standby mode to Tx mode (001 -> 010)
+  Bitmask |= (1 << 1);
+  Bitmask &= ~(1 << 0);
+  SPITransfer(RegOpMode, Bitmask, 1);
 }
 
 uint8_t readFromReg(uint8_t RegAddr)
 {
   return SPITransfer(RegAddr, 0x00, 0);
+}
+
+uint8_t SPIFifoRead(uint8_t Rx)
+{
+  if (Rx)
+  {
+    SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1);
+    //  Effectively Dereferences Pointer
+    return SPITransfer(SPITransfer(RegFifoAddrPtr, 0x00, 0), 0x00, 0);
+  }
+  else
+  {
+    SPITransfer(0x17, 0x47, 1);
+    SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
+    Serial.printf("Payload length Value, 0x%02X\n", SPITransfer(0x17, 0x00, 0));
+    Serial.printf("Payload OpReg, 0x%02X\n", SPITransfer(0x01, 0x00, 0));
+    return SPITransfer(SPITransfer(RegFifoAddrPtr, 0x00, 0), 0x00, 0);
+  }
+}
+
+uint32_t computeFrf(uint32_t carrierHz)
+{
+  // FRF = carrierHz * 2^19 / F_XOSC (F_XOSC = 32 MHz)
+  // Use 64-bit intermediate to avoid overflow
+  uint64_t frf = ((uint64_t)carrierHz << 19) / (uint64_t)32000000UL;
+  return (uint32_t)frf;
 }
