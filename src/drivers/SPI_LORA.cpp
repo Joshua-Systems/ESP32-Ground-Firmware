@@ -159,97 +159,72 @@ void configureSingleReception()
   Serial.printf("RegOpMode SPI Result: %d\n", res);
 }
 
-uint8_t Rx()
+String RxMessage()
 {
-  uint8_t irqFlags;
-  int timeout = 1000;
-  do
-  {
-    irqFlags = SPITransfer(RegIrqReg, 0x00, 0);
-    delay(1);
-    Serial.printf("Irq SPI Result: %d\n", irqFlags);
-    timeout--;
-    if (timeout <= 0)
-    {
-      Serial.printf("RX Timeout");
-      return 0;
-    }
-  } while ((irqFlags & (1 << LRxDone)) == 0); // wait for RxDone bit
+  const uint8_t LONGRANGEMODE = 1 << 7;
 
-  if (irqFlags & (1 << LPayloadCRCError))
-  {
-    Serial.println("CRC error!");
-    return 0; // bad packet
-  }
+  // Ensure LoRa is in standby and ready
+  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
+
+  // Set FIFO pointer to RX base
+  SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
 
   // Clear IRQ flags
   SPITransfer(RegIrqReg, 0xFF, 1);
 
-  uint8_t packetLen = SPITransfer(RegNbRxBytes, 0x00, true);
+  // Set DIO0 to RxDone, DIO1 to PreambleDetected (optional)
+  SPITransfer(REGMAP1, (1 << LRxDone) | (1 << LPreambleDetected), 1);
 
-  // Set Base Pointer
-  SPITransfer(RegFifoAddrPtr, SPITransfer(RegFifoAddrPtr, 0x00, true), false);
-
-  // Read payload from FIFO
-  int i;
-  uint8_t buffer[i];
-  for (uint8_t i = 0; i < packetLen; i++)
-  {
-    buffer[i] = SPITransfer(RegFifo, 0x00, 0);
-  }
-
-  // Clear IRQ flags
-  SPITransfer(RegIrqReg, 0xFF, false);
-
-  // Return packet length
-  return packetLen;
-}
-
-void TxConf(const uint8_t *payload, uint8_t len)
-{
-  const uint8_t MODE_TX = 0x03;
-  const uint8_t LONGRANGEMODE = 1 << 7;
-
-  // Ensure in standby
-  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
-
-  // Set FIFO pointers to TxBase
-  SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1);
-
-  // Set payload length BEFORE writing data (Ideally Implicit header mode)
-  SPITransfer(RegPayloadLength, len, 1);
-
-  // Write payload bytes to FIFO
-  for (uint8_t i = 0; i < len; ++i)
-  {
-    SPITransfer(RegFifo, payload[i], 1);
-  }
-
-  // Clear IRQs and unmask TX Done if desired
-  SPITransfer(RegIrqReg, 0xFF, 1); // clear
-  Serial.printf("The Register After initiating FSTX is: 0x %02X \n", SPITransfer(RegOpMode, 0x00, 0));
-  // Start TX:
-  SPITransfer(RegOpMode, 0x82, 1);
-  SPITransfer(RegOpMode, 0x83, 1);
-
-  Serial.printf("The Register After initiating TX is: 0x%02X \n", SPITransfer(RegOpMode, 0x00, 0));
-
-  SPITransfer(RegDioMapping1, 0x40, 1);
+  // Enter single receive mode
+  SPITransfer(RegOpMode, LONGRANGEMODE | RXSingle, 1);
 
   uint32_t start = millis();
-  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << TXdoneMask)))
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LPreambleDetected)))
   {
-    if (millis() - start > 5000)
-    { // 5 sec timeout
-      Serial.println("TX Timeout!");
-      return;
+    if (millis() - start > 5000) // 5 seconds timeout
+    {
+      Serial.println("Preamble timeout!");
+      return ""; // return empty string to indicate no packet
     }
     delay(1);
   }
 
-  // Clear TX Done flag
-  SPITransfer(RegIrqReg, (1 << TXdoneMask), 1);
-  Serial.println("TX complete!");
+  // Wait for packet received
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LRxDone)))
+  {
+    delay(1);
+    Serial.println("Waiting for Packet...");
+  }
+
+  // Check CRC error
+  if (SPITransfer(RegIrqReg, 0x00, 0) & (1 << PayloadCRCError))
+  {
+    Serial.println("CRC Error!");
+    SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+    return "";                       // return empty string
+  }
+
+  // Read number of bytes in FIFO
+  uint8_t numBytes = SPITransfer(RegNbRxBytes, 0x00, 0);
+
+  if (numBytes == 0)
+    return ""; // no valid packet
+
+  // Set FIFO pointer to current RX address
+  SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
+
+  // Read all bytes
+  String msg = "";
+  for (uint8_t i = 0; i < numBytes; ++i)
+  {
+    uint8_t b = SPITransfer(RegFifo, 0x00, 0);
+    msg += (char)b; // convert to char
+  }
+
+  // Clear IRQs after reading
+  SPITransfer(RegIrqReg, 0xFF, 1);
+
+  return msg;
 }
 
 void ConfDIO()

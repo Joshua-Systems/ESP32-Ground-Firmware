@@ -70,6 +70,8 @@ extern spi_device_handle_t handle;
 #define PayloadCRCError 0b10
 #define RxDone 0b00
 #define LRxDone 6
+#define PreambleDetected 0b11
+#define LPreambleDetected 6
 #define LPayloadCRCError 5
 
 #define RegPreambleDetect 0x1F
@@ -141,7 +143,7 @@ void ConfDIO();
 
 void fuckingWithDIO();
 
-uint8_t Rx();
+String RxMessage();
 
 void TxConf(const uint8_t *payload, uint8_t len);
 

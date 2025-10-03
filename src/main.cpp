@@ -28,9 +28,22 @@ void setup()
 
 void loop()
 {
-  const char *msg = "Hello LoRa";
+  /*const char *msg = "Hello LoRa";
   TxConf((const uint8_t *)msg, strlen(msg));
-  Serial.println("Escaped");
+  */
+  String received = RxMessage();
+
+  if (received.length() > 0)
+  {
+    Serial.print("Received message: ");
+    Serial.println(received);
+  }
+  else
+  {
+    Serial.println("No packet or CRC error");
+  }
+
+  delay(5000); // wait 5 seconds between polls
 }
 
 // put function definitions here:
