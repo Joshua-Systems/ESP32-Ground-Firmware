@@ -122,8 +122,20 @@ void LoRaConfig()
 
   // Config Payload Length
   // Configure LoRa Modem
-  SPITransfer(RegModemConfig1, LoRaConF1, 1);
+  // Ensure explicit header mode
+  uint8_t cfg1 = SPITransfer(RegModemConfig2, 0x00, 0);
+  Serial.printf("RegModemConfig12before: 0x%02X\n", cfg1);
+  cfg1 |= (1 << 2); // Set Explicit header bit
+  SPITransfer(RegModemConfig2, cfg1, 1);
+  Serial.printf("RegModemConfig2: 0x%02X\n", SPITransfer(RegModemConfig2, 0x00, 0));
 
+  SPITransfer(RegModemConfig1, 0x72, 1); // BW = 125 kHz, CR = 4/5, Explicit header mode
+
+  // Allow maximum payload length
+  SPITransfer(RegPayloadLength, 0xFF, 1);
+
+  // Allow maximum payload length
+  SPITransfer(RegPayloadLength, 0xFF, 1);
   // Configure PA to high Power Mode,
   SPITransfer(RegPaConfig, 0x8F, 1);
 
@@ -178,53 +190,176 @@ String RxMessage()
   // Enter single receive mode
   SPITransfer(RegOpMode, LONGRANGEMODE | RXSingle, 1);
 
-  uint32_t start = millis();
+  Serial.println("Waiting for preamble...");
+  // Wait for preamble detected
+  uint32_t count = millis();
   while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LPreambleDetected)))
   {
-    if (millis() - start > 5000) // 5 seconds timeout
+    if (millis() - count > 6000)
     {
-      Serial.println("Preamble timeout!");
-      return ""; // return empty string to indicate no packet
+      Serial.println("RX Timeout!");
+      return ""; // timeout after 10 seconds
     }
-    delay(1);
   }
 
+  count = millis();
   // Wait for packet received
+  Serial.println("Waiting for packet...");
   while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LRxDone)))
   {
-    delay(1);
-    Serial.println("Waiting for Packet...");
+    if (millis() - count > 6000)
+    {
+      Serial.println("RX Timeout!");
+      return ""; // timeout after 10 seconds
+    }
   }
 
   // Check CRC error
   if (SPITransfer(RegIrqReg, 0x00, 0) & (1 << PayloadCRCError))
   {
     Serial.println("CRC Error!");
-    SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
-    return "";                       // return empty string
+    // SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+    return ""; // return empty string
   }
 
   // Read number of bytes in FIFO
   uint8_t numBytes = SPITransfer(RegNbRxBytes, 0x00, 0);
-
   if (numBytes == 0)
-    return ""; // no valid packet
+  {
+    Serial.println("No valid packet!");
+    SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+    return "";                       // no valid packet
+  }
 
   // Set FIFO pointer to current RX address
+  uint8_t preambleLen = 3;
   SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
 
-  // Read all bytes
+  // Read all bytes into a String
   String msg = "";
-  for (uint8_t i = 0; i < numBytes; ++i)
+  String debugmsg = "";
+  for (uint8_t i = 0; i < numBytes; i++)
   {
     uint8_t b = SPITransfer(RegFifo, 0x00, 0);
-    msg += (char)b; // convert to char
+    msg += String(b, HEX); // safer way to see exact bytes
+    debugmsg += (char)b;   // for human-readable messages
+    if (b >= 0x20 && b <= 0x7E)
+      Serial.print((char)b);
   }
+  Serial.println();
+  for (uint8_t i = 0; i < numBytes; i++)
+  {
+    uint8_t b = SPITransfer(RegFifo, 0x00, 0);
+    if (b >= 0x20 && b <= 0x7E)
+      Serial.print((char)b);
+  }
+  Serial.println("Received message (hex):");
+  Serial.println(msg);
+  Serial.println("Received message (ascii):");
+  Serial.println(debugmsg);
+  Serial.printf("Number of bytes: %d\n", numBytes);
+  Serial.println(" ");
 
   // Clear IRQs after reading
   SPITransfer(RegIrqReg, 0xFF, 1);
 
   return msg;
+}
+
+String RxMessageWithTimeout(uint32_t timeoutMs)
+{
+  const uint8_t LONGRANGEMODE = 1 << 7;
+  uint32_t start = millis();
+
+  // Ensure LoRa is in standby
+  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
+  SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
+  SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+  SPITransfer(REGMAP1, (1 << LRxDone) | (1 << LPreambleDetected), 1);
+  SPITransfer(RegOpMode, LONGRANGEMODE | RXSingle, 1);
+
+  // Wait for preamble
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LPreambleDetected)))
+  {
+    if (millis() - start > timeoutMs)
+      return "";
+    delay(1);
+  }
+
+  // Wait for full packet
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << LRxDone)))
+  {
+    if (millis() - start > timeoutMs)
+      return "";
+    delay(1);
+  }
+
+  // Check CRC error
+  if (SPITransfer(RegIrqReg, 0x00, 0) & (1 << PayloadCRCError))
+  {
+    SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+    return "";
+  }
+
+  uint8_t numBytes = SPITransfer(RegNbRxBytes, 0x00, 0);
+  if (numBytes == 0)
+    return "";
+
+  SPITransfer(RegFifoAddrPtr, FifoRxBaseAddr, 1);
+  String msg = "";
+  for (uint8_t i = 0; i < numBytes; ++i)
+    msg += (char)SPITransfer(RegFifo, 0x00, 0);
+
+  SPITransfer(RegIrqReg, 0xFF, 1); // clear IRQs
+  return msg;
+}
+
+void TxConf(const uint8_t *payload, uint8_t len)
+{
+  const uint8_t MODE_TX = 0x03;
+  const uint8_t LONGRANGEMODE = 1 << 7;
+
+  // Ensure in standby
+  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
+
+  // Set FIFO pointers to TxBase
+  SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1); // set pointer to base
+
+  // Set payload length BEFORE writing data (Ideally Implicit header mode)
+  SPITransfer(RegPayloadLength, len, 1);
+
+  // Write payload bytes to FIFO
+  for (uint8_t i = 0; i < len; ++i)
+  {
+    SPITransfer(RegFifo, payload[i], 1);
+  }
+
+  // Clear IRQs and unmask TX Done if desired
+  SPITransfer(RegIrqReg, 0xFF, 1); // clear
+  Serial.printf("The Register After initiating FSTX is: 0x %02X \n", SPITransfer(RegOpMode, 0x00, 0));
+  // Start TX:
+  SPITransfer(RegOpMode, 0x82, 1);
+  SPITransfer(RegOpMode, 0x83, 1); // enter TX mode
+
+  Serial.printf("The Register After initiating TX is: 0x%02X \n", SPITransfer(RegOpMode, 0x00, 0));
+
+  SPITransfer(RegDioMapping1, 0x40, 1);
+  // maKE CLEAR
+
+  uint32_t start = millis();
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << TXdoneMask)))
+  {
+    if (millis() - start > 5000)
+    { // 5 sec timeout
+      Serial.println("TX Timeout!");
+      return;
+    }
+    delay(1);
+  }
+
+  // Clear TX Done flag
+  SPITransfer(RegIrqReg, (1 << TXdoneMask), 1);
+  Serial.println("TX complete!");
 }
 
 void ConfDIO()
@@ -305,4 +440,30 @@ uint32_t computeFrf(uint32_t carrierHz)
   // Use 64-bit intermediate to avoid overflow
   uint64_t frf = ((uint64_t)carrierHz << 19) / (uint64_t)32000000UL;
   return (uint32_t)frf;
+}
+
+// Utility Functions
+
+void printPayloadHex(uint8_t *buf, uint8_t len)
+{
+  Serial.print("Payload (hex): ");
+  for (uint8_t i = 0; i < len; i++)
+  {
+    Serial.printf("%02X ", buf[i]);
+  }
+  Serial.println();
+}
+
+void printPayloadAscii(uint8_t *buf, uint8_t len)
+{
+  Serial.print("Payload (ascii): ");
+  for (uint8_t i = 0; i < len; i++)
+  {
+    char c = buf[i];
+    if (c >= 0x20 && c <= 0x7E)
+      Serial.print(c);
+    else
+      Serial.print('.'); // non-printable chars
+  }
+  Serial.println();
 }

@@ -22,6 +22,7 @@ void setup()
 
   Serial.println("LoRa SPI initialized and configured.");
   Serial.printf("Status: 0x%02X", readFromReg(RegOpMode));
+  Serial.println(" - Should be 0x81 (Standby Mode)");
 
   //
 }
@@ -29,11 +30,14 @@ void setup()
 void loop()
 {
   /*const char *msg = "Hello LoRa";
-  TxConf((const uint8_t *)msg, strlen(msg));
-  */
+  TxConf((const uint8_t *)msg, (uint8_t)strlen(msg));*/
+  // delay(500);
+  // Serial.println("Attempting first receive...");
   String received = RxMessage();
+  // String receivedTimeout = RxMessageWithTimeout(10000); // 10 second timeout
+  // String receivedTimeout2 = RxMessageWithTimeout(10000); // 10 second timeout
 
-  if (received.length() > 0)
+  if (received.length() > 0 && received != 0)
   {
     Serial.print("Received message: ");
     Serial.println(received);
@@ -43,7 +47,7 @@ void loop()
     Serial.println("No packet or CRC error");
   }
 
-  delay(5000); // wait 5 seconds between polls
+  // wait 5 seconds between polls*/
 }
 
 // put function definitions here:

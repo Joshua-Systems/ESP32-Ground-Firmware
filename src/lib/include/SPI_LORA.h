@@ -38,6 +38,7 @@ extern spi_device_handle_t handle;
 #define RegNbRxBytes 0x1D  // Counter of number of Rx'd bytes
 
 #define RegFifoAddrPtr 0x0D
+#define RegFifoRxCurrentAddr 0x10 // Current RX address
 
 // Set LongRangeMode bit of RegOpMode
 #define RXSingle 0x06
@@ -145,6 +146,10 @@ void fuckingWithDIO();
 
 String RxMessage();
 
+String RxMessageGay();
+
+String RxMessageWithTimeout(uint32_t timeoutMs);
+
 void TxConf(const uint8_t *payload, uint8_t len);
 
 uint8_t ReadDIO();
@@ -156,3 +161,7 @@ uint8_t SpiWrite(uint8_t RegAddr, uint8_t Data);
 uint8_t SPIFifoRead(uint8_t Rx);
 
 uint32_t computeFrf(uint32_t CarrierFreq);
+
+void printPayloadHex(uint8_t* buf, uint8_t len);
+
+void printPayloadAscii(uint8_t* buf, uint8_t len);
