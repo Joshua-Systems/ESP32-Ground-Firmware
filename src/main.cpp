@@ -22,15 +22,13 @@ void setup()
 
   Serial.println("LoRa SPI initialized and configured.");
   Serial.printf("Status: 0x%02X", readFromReg(RegOpMode));
-
-  //
 }
 
 void loop()
 {
-  const char *msg = "Hello LoRa";
-  TxConf((const uint8_t *)msg, strlen(msg));
-  Serial.println("Escaped");
+  const char *msg2 = "YURIA YURIA WHY??? YURIA YURIA WHY??? YURIA YURIA WHY??? YURIA YURIA WHY???";
+  TxConf((const uint8_t *)msg2, strlen(msg2));
+  Serial.println("Escape2d");
 }
 
 // put function definitions here:

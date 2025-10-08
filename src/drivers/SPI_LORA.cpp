@@ -122,7 +122,18 @@ void LoRaConfig()
 
   // Config Payload Length
   // Configure LoRa Modem
-  SPITransfer(RegModemConfig1, LoRaConF1, 1);
+  // Ensure explicit header mode
+  uint8_t cfg1 = SPITransfer(RegModemConfig2, 0x00, 0);
+  Serial.printf("RegModemConfig12before: 0x%02X\n", cfg1);
+  cfg1 |= (1 << 2); // Set Explicit header bit
+  SPITransfer(RegModemConfig2, cfg1, 1);
+  Serial.printf("RegModemConfig2: 0x%02X\n", SPITransfer(RegModemConfig2, 0x00, 0));
+
+  SPITransfer(RegModemConfig1, 0x72, 1); // BW = 125 kHz, CR = 4/5, Explicit header mode
+
+  // Allow maximum payload length
+  SPITransfer(RegPayloadLength, 0xFF, 1);
+  SPITransfer(RegPayloadMax, 0xFF, 1);
 
   // Configure PA to high Power Mode,
   SPITransfer(RegPaConfig, 0x8F, 1);
@@ -214,7 +225,8 @@ void TxConf(const uint8_t *payload, uint8_t len)
   SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
 
   // Set FIFO pointers to TxBase
-  SPITransfer(RegFifoAddrPtr, FifoTxBaseAddr, 1);
+  uint8_t txBase = SPITransfer(FifoTxBaseAddr, 0x00, 0); // read TX base addr
+  SPITransfer(RegFifoAddrPtr, txBase, 1);                // set pointer to base
 
   // Set payload length BEFORE writing data (Ideally Implicit header mode)
   SPITransfer(RegPayloadLength, len, 1);
@@ -229,12 +241,12 @@ void TxConf(const uint8_t *payload, uint8_t len)
   SPITransfer(RegIrqReg, 0xFF, 1); // clear
   Serial.printf("The Register After initiating FSTX is: 0x %02X \n", SPITransfer(RegOpMode, 0x00, 0));
   // Start TX:
-  SPITransfer(RegOpMode, 0x82, 1);
-  SPITransfer(RegOpMode, 0x83, 1);
+  SPITransfer(RegOpMode, 0x83, 1); // enter TX mode
 
   Serial.printf("The Register After initiating TX is: 0x%02X \n", SPITransfer(RegOpMode, 0x00, 0));
 
   SPITransfer(RegDioMapping1, 0x40, 1);
+  // maKE CLEAR
 
   uint32_t start = millis();
   while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << TXdoneMask)))

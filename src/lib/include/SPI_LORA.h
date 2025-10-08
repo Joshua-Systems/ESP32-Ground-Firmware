@@ -8,17 +8,17 @@
 // Choose pins for ESP32-C3 (adjust if needed)//
 
 #define LORA_HOST SPI2_HOST
-#define PIN_MISO 4
-#define PIN_MOSI 7
-#define PIN_SCLK 9
-#define PIN_CS 8 // Chip Select (any free GPIO)
+#define PIN_MISO 19
+#define PIN_MOSI 23
+#define PIN_SCLK 18
+#define PIN_CS 5 // Chip Select (any free GPIO)
 
-#define DIO3 10
+#define DIO3 15
 #define DIO4 2
-#define DIO0 3
-#define DIO1 0
-#define DIO2 1
-#define DIO5 6
+#define DIO0 25
+#define DIO1 33
+#define DIO2 27
+#define DIO5 4
 
 extern spi_bus_config_t buscfg;
 extern esp_err_t ret;
