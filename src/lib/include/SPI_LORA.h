@@ -11,7 +11,7 @@
 #define PIN_MISO 19
 #define PIN_MOSI 23
 #define PIN_SCLK 18
-#define PIN_CS 5 // Chip Select (any free GPIO)
+#define PIN_CS 5 // Chip Select (any free GPIO)                                                                                                                                                                                                                                                                                                                             ````````````````````````````````````````````````````````
 
 #define DIO3 15
 #define DIO4 2
@@ -144,6 +144,8 @@ void fuckingWithDIO();
 uint8_t Rx();
 
 void TxConf(const uint8_t *payload, uint8_t len);
+
+void TxMut(uint8_t *payload, uint8_t len);
 
 uint8_t ReadDIO();
 

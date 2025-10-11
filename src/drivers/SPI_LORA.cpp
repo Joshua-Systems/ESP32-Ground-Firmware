@@ -264,6 +264,54 @@ void TxConf(const uint8_t *payload, uint8_t len)
   Serial.println("TX complete!");
 }
 
+void TxMut(uint8_t *payload, uint8_t len)
+{
+  const uint8_t MODE_TX = 0x03;
+  const uint8_t LONGRANGEMODE = 1 << 7;
+
+  // Ensure in standby
+  SPITransfer(RegOpMode, LONGRANGEMODE | 0x01, 1);
+
+  // Set FIFO pointers to TxBase
+  uint8_t txBase = SPITransfer(FifoTxBaseAddr, 0x00, 0); // read TX base addr
+  SPITransfer(RegFifoAddrPtr, txBase, 1);                // set pointer to base
+
+  // Set payload length BEFORE writing data (Ideally Implicit header mode)
+  SPITransfer(RegPayloadLength, len, 1);
+
+  // Write payload bytes to FIFO
+  for (uint8_t i = 0; i < len; ++i)
+  {
+    SPITransfer(RegFifo, payload[i], 1);
+  }
+
+  // Clear IRQs and unmask TX Done if desired
+  SPITransfer(RegIrqReg, 0xFF, 1); // clear
+  Serial.printf("The Register After initiating FSTX is: 0x %02X \n", SPITransfer(RegOpMode, 0x00, 0));
+  // Start TX:
+  SPITransfer(RegOpMode, 0x83, 1); // enter TX mode
+
+  Serial.printf("The Register After initiating TX is: 0x%02X \n", SPITransfer(RegOpMode, 0x00, 0));
+
+  SPITransfer(RegDioMapping1, 0x40, 1);
+  // maKE CLEAR
+
+  uint32_t start = millis();
+  while (!(SPITransfer(RegIrqReg, 0x00, 0) & (1 << TXdoneMask)))
+  {
+    if (millis() - start > 5000)
+    { // 5 sec timeout
+      Serial.println("TX Timeout!");
+      return;
+    }
+    delay(1);
+  }
+
+  // Clear TX Done flag
+  SPITransfer(RegIrqReg, (1 << TXdoneMask), 1);
+  Serial.println("TX complete!");
+}
+
 void ConfDIO()
 // TODO: Have this function become modular by allowing it to
 // Either input or output a value dependent on DIO
